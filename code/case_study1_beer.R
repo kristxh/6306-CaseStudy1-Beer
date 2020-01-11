@@ -3,6 +3,7 @@ library(tidyverse)
 library(dplyr)
 library(ggplot2)
 library(data.table)
+library(ggthemes)
 
 # Import Beer and Brewery data
 beer_df <-  read_csv("Beers.csv")
@@ -17,8 +18,7 @@ dim(brew_df)
 # 1.  How many breweries are present in each state?
 
 #  Group breweries by state
-brew_by_state <- brew_df %>% 
-  group_by(State) %>% summarize(count=n())
+brew_by_state <- brew_df %>% group_by(State) %>% summarize(count=n())
   
 # Display # of breweries by state
 View(brew_by_state)
@@ -31,38 +31,43 @@ brew_by_state %>%
   
 
 #####################################################
-# 2.  Print first and last six observations
-head(beer_df, 6)
-tail(beer_df, 6)
-head(brew_df, 6)
-tail(brew_df, 6)
+# 2.  Merge the Beer Data with the Brewery Data.  Print first and last six observations.
 
+# Change the column names in the Beer df
+setnames(beer_df, old=c("Name","Brewery_id"), new=c("Beer_name", "Brew_ID"))
+
+# Change column name in the Brewery df
+setnames(brew_df, old=c("Name"), new=c("Brewery_name"))
+
+# Merge the brewery data with the beer data (left join)
+(all_df <- merge(beer_df, brew_df, by="Brew_ID"))
+dim(all_df)
+
+# Print the first & last 6 observations
+ht <- function(df, m=6, n=m){
+  # print the head and tail together
+  list(HEAD = head(df,m), TAIL = tail(df,n))
+}
+
+ht(all_df)
 
 #####################################################
 # 3.  Address the missing values in each column
 
 # Remove missing data for beer & rename the Name and Brewery_id Columns
-beer_clean_df <- beer_df %>% filter(!is.na(ABV) & !is.na(IBU) & !is.na(Style)) 
-setnames(beer_clean_df, old=c("Name","Brewery_id"), new=c("Beer_name", "Brew_ID"))
-
-# Remove missing data for breweries & Rename the Name column
-brew_df %>% filter(is.na(Brew_ID) | is.na(Name) | is.na(City) | is.na(State)) # There are no N/As for the brewery data
-setnames(brew_df, old=c("Name"), new=c("Brewery_name"))
-
-# Combine the brewery data with the beer data (left join)
-(all_data_df <- merge(beer_clean_df, brew_df, by="Brew_ID"))
+(clean_df <- all_df %>% filter(!is.na(ABV) & !is.na(IBU) & !is.na(Style)))
+dim(clean_df)
 
 #####################################################
 # 4.  Compute the median alcohol content and international bitterness unit for each state.  Plot a bar chart to compare.
 
 # Dataframe with median values for ABV and IBU
-(med_abv_ibu <- all_data_df %>% 
+(med_abv_ibu <- clean_df %>% 
   group_by(State) %>%
   summarize(med_abv = median(ABV), med_ibu = median(IBU), count = n()))
 
 # Plot
 # TBD
-
 
 #####################################################
 # 5.  Which state has the maxiumum alcoholic (ABV) beer?  Which state has the most bitter (IBU) beer?
@@ -103,6 +108,9 @@ unique(all_data_df$Style)
 
 
 # Scatter plot
-# TBD
+(plot1 <- ggplot(ipa_df, aes(ABV, IBU)) + 
+    geom_point(color="blue") +
+    geom_point(data = ale_df, color = "red")
+)
 
 
