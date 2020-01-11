@@ -1,1 +1,1 @@
-# 6306-CaseStudy1-Beer
+# MSDS 6306: Doing Data Science - Case Study 01
