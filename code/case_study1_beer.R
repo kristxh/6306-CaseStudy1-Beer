@@ -30,7 +30,7 @@ brew_by_state %>%
   geom_bar(stat = "identity", fill = "blue", alpha = .5) +
   ggtitle("Number of Breweries by State") + xlab("State") + ylab("Number of Breweries")
 
-# Plot # of breweries by state in a map (doesn't work right now)
+# Need to fix this plot of breweries by state in a map
 plot_usmap(data = brew_by_state$State, values = brew_by_state$count, color = "red") + 
   scale_fill_continuous(name = "Population (2015)", label = scales::comma) + 
   theme(legend.position = "right")
@@ -77,14 +77,16 @@ dim(clean_df)
   summarize(med_abv = median(ABV), med_ibu = median(IBU), count = n()))
 
 # Plot
-# TBD
-n <- ggplot(med_abv_ibu) + 
-  geom_bar(mapping = aes(x = State, y = med_abv), stat = "identity", colour = "blue", fill = "navy", position = "dodge") + 
-  geom_bar(mapping = aes(x = State, y = med_ibu), stat = "identity", colour = "red", fill = "red", position = "dodge")  +
-  scale_y_continuous(sec.axis = sec_axis(~ . * .001)) 
-
-n
-
+ggplot(med_abv_ibu, aes(x = State)) +
+  geom_col(aes( y = med_ibu, fill="redfill")) +
+  geom_text(aes(y = med_ibu, label = med_ibu), fontface = "bold", vjust = 2.4, color = "white", size = 3) +
+  geom_line(aes(y = med_abv * 1000, group = 1, color = 'blackline')) +
+  geom_text(aes(y = med_abv * 1000, label = round(med_abv, 2)), vjust = -.4, color = "black", size = 3) +
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ . / 500)) +
+  scale_fill_manual('', labels = 'Median Bitterness (IBU)', values = "#C00000") +
+  scale_color_manual('', labels = 'Median Alcohol By Volumen (ABV)', values = 'black') +
+  ggtitle("Median Alcohol Content & International Bitterness by State") +
+  theme_minimal()
 
 #####################################################
 # 5.  Which state has the maxiumum alcoholic (ABV) beer?  Which state has the most bitter (IBU) beer?
@@ -105,6 +107,10 @@ summary(clean_df$ABV)
 clean_df %>%
   ggplot(aes(y = ABV)) +
   geom_boxplot()
+
+clean_df %>%
+  ggplot(aes(x = ABV)) +
+  geom_histogram(colour="black",fill="navy")
 
 
 #####################################################
@@ -147,6 +153,7 @@ head(test_ipa)
 # Run the KNN model on the train and test data
 classifications = knn(train_ipa[, 4:5],test_ipa[, 4:5],train_ipa$ipa_or_ale, prob = TRUE, k = 5)
 str(train_ipa)
+
 # Create a confusion matrix of the results
 CM_KNN_IPA = confusionMatrix(table(classifications,test_ipa$ipa_or_ale))
 CM_KNN_IPA
@@ -156,6 +163,10 @@ bud_test = data.frame(ABV = .05, IBU = 12)
 
 # Run k-NN model for each class
 classify_bud = knn(train_ipa[, 4:5], bud_test, train_ipa$ipa_or_ale, prob = TRUE, k = 5)
+
+
+# CM_KNN_BUD = confusionMatrix(table(classify_bud,test_ipa$ipa_or_ale))
+# CM_KNN_BUD
 
 # Scatter plot
 ggplot(data = ipa_ale_df) +
@@ -167,8 +178,9 @@ ggplot(data = ipa_ale_df) +
 #####################################################
 # 9.  What states are closest to the Bud ABV/IBU profile?
 
-# Run the KNN model on the train and test data and add the state parameter
+# Run the KNN model on the train and test data and add the state parameter (Use all data to train/test)
 classify_w_state = knn(train_ipa[, 4:5],test_ipa[, 4:5],train_ipa$State, prob = TRUE, k = 5)
+classify_bud_st = knn(train_ipa[, 4:5], bud_test, train_ipa$State, prob = TRUE, k = 5)
 
 CM_KNN_State = confusionMatrix(table(classify_w_state,test_ipa$State))
 CM_KNN_State
@@ -197,4 +209,6 @@ for (i in 1:length(bud_crafts)){
 
 #####################################################
 # Two y axes test
+
+statepop
 
