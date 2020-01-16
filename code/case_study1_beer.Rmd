@@ -50,7 +50,8 @@ View(brew_by_state)
 brew_by_state %>%
   ggplot(aes(x = State, y = count)) +
   geom_bar(stat = "identity", fill = "blue", alpha = .5) +
-  ggtitle("Number of Breweries by State") + xlab("State") + ylab("Number of Breweries") 
+  ggtitle("Number of Breweries by State") + xlab("State") + ylab("Number of Breweries") +
+  geom_text(aes(y = count, label = count), fontface = "bold", vjust = -.4, color = "black", size = 3) 
 
 # Need to fix this plot of breweries by state in a map
 # plot_usmap(data = brew_by_state$State, values = brew_by_state$count, color = "red") + 
@@ -86,7 +87,7 @@ dim(all_df)
 ```{r}
 
 # count missing values in each column
-s = sapply(df, function(x) sum(is.na(x)))
+s = sapply(all_df, function(x) sum(is.na(x)))
 s
 
 gg_miss_var(all_df)
@@ -112,14 +113,15 @@ ggplot(med_abv_ibu, aes(x = State)) +
   geom_text(aes(y = med_abv * 1000, label = round(med_abv, 2)), vjust = -.4, color = "black", size = 3) +
   scale_y_continuous(sec.axis = sec_axis(trans = ~ . / 500)) +
   scale_fill_manual('', labels = 'Median Bitterness (IBU)', values = "#C00000") +
-  scale_color_manual('', labels = 'Median Alcohol By Volumen (ABV)', values = 'black') +
+  scale_color_manual('', labels = 'Median Alcohol By Volumn (ABV)', values = 'black') +
   ggtitle("Median Alcohol Content & International Bitterness by State") +
   theme_minimal()
 
 ```
 
 ## 5.  Which state has the maxiumum alcoholic (ABV) beer?  Which state has the most bitter (IBU) beer?
-
+###Kentucky has the highest ABV beer, which is called ‘London Balling’,  made by Against the Grain Brewery, located in Louisville city.
+###Oregon has the highest IBU beer, which is called ‘Bitter Bitch Imperial IPA’, made by Astoria Brewing Company, located in Astoria city.
 ```{r}
 max_abv_ibu <- clean_df %>% group_by(State) %>% summarize(max_abv = max(ABV), max_ibu = max(IBU), count = n())
 
@@ -129,27 +131,31 @@ max_abv_ibu <- clean_df %>% group_by(State) %>% summarize(max_abv = max(ABV), ma
 # State with max IBU
 (highest_ibu <- max_abv_ibu %>% filter(rank(desc(max_ibu))<=1))
 
+#List row with max ABV
+view(clean_df[which.max(clean_df$ABV),])
+
+#List row with max IBU
+view(clean_df[which.max(clean_df$IBU),])
+
+
+
 ```
 
 ## 6.  Comment on the summary statistics and distribution of the ABV variable.
 
-### Kentucky has the beer with the max ABV of 0.125 while Oregon has the one with the min ABV of 0.027.
 ### The distribution of ABV variable is slightly right-skewed.
 
 ```{r}
+#Summary of key statistics of ABV
 summary(clean_df$ABV)
 
-#Extract rows of Min and Max ABV
-
-clean_df[which.max(clean_df$ABV),]
-clean_df[which.min(clean_df$ABV),]
-
-# Plot
+# Plot boxplot
 clean_df %>%
   ggplot(aes(y = ABV)) +
   geom_boxplot() +
   ggtitle("Summary Statistics of the ABV") + ylab("ABV")
 
+# Plot histogram
 clean_df %>%
   ggplot(aes(x = ABV)) +
   geom_histogram(colour="black",fill="navy") +
@@ -217,21 +223,35 @@ classify_bud = knn(train[,c("ABV","IBU")], bud_test, train$beer_type, prob = TRU
 classify_bud
 
 #IPA vs Ale
-#Loop for many k and one training
-accs = data.frame(accuracy = numeric(100), k = numeric(100))
+# Loop for many k and the average of many training / test partition
+# to pick the best k for the model 
+```{r}
+iterations = 200
+numks = 30
 
-for(i in 1:100)
+masterAcc = matrix(nrow = iterations, ncol = numks)
+  
+for(j in 1:iterations)
 {
-  classifications = knn(train[,c("ABV","IBU")],test[,c("ABV","IBU")],train$beer_type, prob = TRUE, k = i)
+accs = data.frame(accuracy = numeric(30), k = numeric(30))
+trainIndices = sample(1:dim(ipa_ale_df)[1],round(splitPerc * dim(ipa_ale_df)[1]))
+train = ipa_ale_df[trainIndices,]
+test = ipa_ale_df[-trainIndices,]
+for(i in 1:numks)
+{
+   classifications = knn(train[,c("ABV","IBU")],test[,c("ABV","IBU")],train$beer_type, prob = TRUE, k = i)
   table(test$beer_type,classifications)
   CM = confusionMatrix(table(test$beer_type,classifications))
-  accs$accuracy[i] = CM$overall[1]
-  accs$k[i] = i
+  masterAcc[j,i] = CM$overall[1]
 }
 
-plot(accs$k,accs$accuracy, type = "l", xlab = "k")
+}
 
-# Scatter plot
+MeanAcc = colMeans(masterAcc)
+
+plot(seq(1,numks,1),MeanAcc, type = "l")
+
+# Plot scatter plot of ABV and IBU for beer classified as “Ale” and “IPA”
 ggplot(data = ipa_ale_df) +
   geom_point(mapping = aes(x = ABV, y = IBU, color=beer_type), position ="jitter") +
   ggtitle("IPA and Ales") + xlab("Alcohol by Volume (ABV)") + ylab("International Bitterness Units (IBU)")
