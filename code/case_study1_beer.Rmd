@@ -149,6 +149,9 @@ view(clean_df[which.max(clean_df$IBU),])
 #Summary of key statistics of ABV
 summary(clean_df$ABV)
 
+#Outliers
+OutVals = boxplot(clean_df$ABV, plot=FALSE)$out
+hist(OutVals)
 # Plot boxplot
 clean_df %>%
   ggplot(aes(y = ABV)) +
@@ -161,6 +164,8 @@ clean_df %>%
   geom_histogram(colour="black",fill="navy") +
   ggtitle("Distribution of ABV") + xlab("ABV")
 
+# t-test
+t.test(clean_df$ABV, conf.level = .95)
 ```
 
 ## 7.  Is there an apparant relationship between the bitterness of the beer and its alcoholic content?  Draw a scatter plot.  Make your best judgment of a relationship and EXPLAIN your answer.
