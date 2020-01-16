@@ -111,7 +111,7 @@ ggplot(med_abv_ibu, aes(x = State)) +
   geom_text(aes(y = med_ibu, label = med_ibu), fontface = "bold", vjust = 2.4, color = "white", size = 3) +
   geom_line(aes(y = med_abv * 1000, group = 1, color = 'blackline')) +
   geom_text(aes(y = med_abv * 1000, label = round(med_abv, 2)), vjust = -.4, color = "black", size = 3) +
-  scale_y_continuous(sec.axis = sec_axis(trans = ~ . / 500)) +
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ . / 1000)) +
   scale_fill_manual('', labels = 'Median Bitterness (IBU)', values = "#C00000") +
   scale_color_manual('', labels = 'Median Alcohol By Volumn (ABV)', values = 'black') +
   ggtitle("Median Alcohol Content & International Bitterness by State") +
@@ -136,6 +136,18 @@ view(clean_df[which.max(clean_df$ABV),])
 
 #List row with max IBU
 view(clean_df[which.max(clean_df$IBU),])
+
+# Plot max values for ABV and IBU
+ggplot(max_abv_ibu, aes(x = State)) +
+  geom_col(aes( y = max_ibu, fill="redfill")) +
+  geom_text(aes(y = max_ibu, label = max_ibu), fontface = "bold", vjust = 2.4, color = "white", size = 3) +
+  geom_line(aes(y = max_abv * 1000, group = 1, color = 'blackline')) +
+  geom_text(aes(y = max_abv * 1000, label = round(max_abv, 2)), vjust = -.4, color = "black", size = 3) +
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ . / 1000)) +
+  scale_fill_manual('', labels = 'Max Bitterness (IBU)', values = "#C00000") +
+  scale_color_manual('', labels = 'Max Alcohol By Volumn (ABV)', values = 'black') +
+  ggtitle("Max Alcohol Content & International Bitterness by State") +
+  theme_minimal()
 
 
 
