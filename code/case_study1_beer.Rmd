@@ -27,6 +27,12 @@ library(class)
 library(caret)
 library(plotly)
 library(GGally)
+library(ggpubr)
+library(fiftystater)
+library(viridis)
+library(labgeo)
+data(fifty_states)
+
 # Import Beer and Brewery data
 beer_df <-  read_csv("Beers.csv")
 brew_df <-  read_csv("Breweries.csv")
@@ -47,17 +53,74 @@ brew_by_state <- brew_df %>% group_by(State) %>% summarize(count=n())
 # Display # of breweries by state
 View(brew_by_state)
 
+```
+
+
+```{r, fig.width=10, fig.height=5}
+
 # Plot # of breweries by state in a barchart
-brew_by_state %>%
+p <- brew_by_state %>%
   ggplot(aes(x = State, y = count)) +
   geom_bar(stat = "identity", fill = "blue", alpha = .5) +
   ggtitle("Number of Breweries by State") + xlab("State") + ylab("Number of Breweries") +
   geom_text(aes(y = count, label = count), fontface = "bold", vjust = -.4, color = "black", size = 3) 
 
-# Need to fix this plot of breweries by state in a map
-# plot_usmap(data = brew_by_state$State, values = brew_by_state$count, color = "red") + 
-#   scale_fill_continuous(name = "Population (2015)", label = scales::comma) + 
-#   theme(legend.position = "right")
+p + rotate_x_text(45)
+
+```
+
+
+```{r}
+
+#'x' is the column of a data.frame that holds 2 digit state codes
+state_from_lower <-function(x) {
+   #read 52 state codes into local variable [includes DC (Washington D.C. and PR (Puerto Rico)]
+  st.codes <- data.frame(
+                      state=as.factor(c("AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA",
+                                         "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME",
+                                         "MI", "MN", "MO", "MS",  "MT", "NC", "ND", "NE", "NH", "NJ", "NM",
+                                         "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN",
+                                         "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY")),
+                      full=as.factor(c("alaska","alabama","arkansas","arizona","california","colorado",
+                                       "connecticut","district of columbia","delaware","florida","georgia",
+                                       "hawaii","iowa","idaho","illinois","indiana","kansas","kentucky",
+                                       "louisiana","massachusetts","maryland","maine","michigan","minnesota",
+                                       "missouri","mississippi","montana","north carolina","north dakota",
+                                       "nebraska","new hampshire","new jersey","new mexico","nevada",
+                                       "new york","ohio","oklahoma","oregon","pennsylvania","puerto rico",
+                                       "rhode island","south carolina","south dakota","tennessee","texas",
+                                       "utah","virginia","vermont","washington","wisconsin",
+                                       "west virginia","wyoming"))
+                       )
+     #create an nx1 data.frame of state codes from source column
+    st.x<-data.frame(state=x)
+     #match source codes with codes from 'st.codes' local variable and use to return the full state name
+    refac.x<-st.codes$full[match(st.x$state,st.codes$state)]
+     #return the full state names in the same order in which they appeared in the original source
+  return(refac.x)
+}
+
+brew_by_state$id<-state_from_lower(brew_by_state$State)
+
+```
+
+
+```{r, fig.width=10, fig.height=8}
+
+ggplot(data = brew_by_state, aes(map_id = id)) + 
+  geom_map(aes(fill = count),  color= "black", map = fifty_states) + 
+  expand_limits(x = fifty_states$long, y = fifty_states$lat) +
+  coord_map() + 
+  ggtitle("Number of Breweries by State") +
+  geom_text(data = fifty_states %>%
+              group_by(id) %>%
+              summarise(lat = mean(c(max(lat), min(lat))),
+                        long = mean(c(max(long), min(long)))) %>%
+              mutate(state = id) %>%
+              left_join(brew_by_state, by = "id"), aes(x = long, y = lat, label = count))+
+  scale_x_continuous(breaks = NULL) + scale_y_continuous(breaks = NULL) +
+  labs(x = "", y = "") + theme(legend.position = "bottom", 
+                               panel.background = element_blank())
 
 ```
 
@@ -86,7 +149,6 @@ dim(all_df)
 ## 3.  Address the missing values in each column
 
 ```{r}
-
 # count missing values in each column
 s = sapply(all_df, function(x) sum(is.na(x)))
 s
@@ -106,17 +168,23 @@ dim(clean_df)
   group_by(State) %>%
   summarize(med_abv = median(ABV), med_ibu = median(IBU), count = n()))
 
+```
+
+```{r, fig.width=20, fig.height=10}
+
 # Plot
-ggplot(med_abv_ibu, aes(x = State)) +
+p2 <- ggplot(med_abv_ibu, aes(x = State)) +
   geom_col(aes( y = med_ibu, fill="redfill")) +
-  geom_text(aes(y = med_ibu, label = med_ibu), fontface = "bold", vjust = 2.4, color = "white", size = 3) +
+  geom_text(aes(y = med_ibu, label = med_ibu), fontface = "bold", vjust = 2.4, color = "white", size = 4) +
   geom_line(aes(y = med_abv * 1000, group = 1, color = 'blackline')) +
-  geom_text(aes(y = med_abv * 1000, label = round(med_abv, 2)), vjust = -.4, color = "black", size = 3) +
+  geom_text(aes(y = med_abv * 1000, label = round(med_abv, 2)), vjust = -.4, color = "black", size = 4) +
   scale_y_continuous(sec.axis = sec_axis(trans = ~ . / 1000)) +
   scale_fill_manual('', labels = 'Median Bitterness (IBU)', values = "#C00000") +
   scale_color_manual('', labels = 'Median Alcohol By Volumn (ABV)', values = 'black') +
   ggtitle("Median Alcohol Content & International Bitterness by State") +
   theme_minimal()
+
+p2 + rotate_x_text(45)
 
 ```
 
@@ -126,31 +194,29 @@ ggplot(med_abv_ibu, aes(x = State)) +
 ```{r}
 max_abv_ibu <- clean_df %>% group_by(State) %>% summarize(max_abv = max(ABV), max_ibu = max(IBU), count = n())
 
-# State with max ABV
-(highest_abv <- max_abv_ibu %>% filter(rank(desc(max_abv))<=1))
-
-# State with max IBU
-(highest_ibu <- max_abv_ibu %>% filter(rank(desc(max_ibu))<=1))
-
 #List row with max ABV
 view(clean_df[which.max(clean_df$ABV),])
 
 #List row with max IBU
 view(clean_df[which.max(clean_df$IBU),])
 
+```
+
+```{r, fig.width=20, fig.height=10}
+
 # Plot max values for ABV and IBU
-ggplot(max_abv_ibu, aes(x = State)) +
+p3 <- ggplot(max_abv_ibu, aes(x = State)) +
   geom_col(aes( y = max_ibu, fill="redfill")) +
-  geom_text(aes(y = max_ibu, label = max_ibu), fontface = "bold", vjust = 2.4, color = "white", size = 3) +
+  geom_text(aes(y = max_ibu, label = max_ibu), fontface = "bold", vjust = 2.4, color = "white", size = 4) +
   geom_line(aes(y = max_abv * 1000, group = 1, color = 'blackline')) +
-  geom_text(aes(y = max_abv * 1000, label = round(max_abv, 2)), vjust = -.4, color = "black", size = 3) +
+  geom_text(aes(y = max_abv * 1000, label = round(max_abv, 2)), vjust = -.4, color = "black", size = 4) +
   scale_y_continuous(sec.axis = sec_axis(trans = ~ . / 1000)) +
   scale_fill_manual('', labels = 'Max Bitterness (IBU)', values = "#C00000") +
   scale_color_manual('', labels = 'Max Alcohol By Volumn (ABV)', values = 'black') +
   ggtitle("Max Alcohol Content & International Bitterness by State") +
   theme_minimal()
 
-
+p3 + rotate_x_text(45)
 
 ```
 
@@ -165,12 +231,16 @@ summary(clean_df$ABV)
 #Outliers
 OutVals = boxplot(clean_df$ABV, plot=FALSE)$out
 hist(OutVals)
+
 # Plot boxplot
 clean_df %>%
   ggplot(aes(y = ABV)) +
   geom_boxplot() +
   ggtitle("Summary Statistics of the ABV") + ylab("ABV")
 
+```
+
+```{r, fig.width=10, fig.height=5}
 # Plot histogram
 clean_df %>%
   ggplot(aes(x = ABV)) +
@@ -180,12 +250,11 @@ clean_df %>%
 # t-test
 t.test(clean_df$ABV, conf.level = .95)
 ```
-
 ## 7.  Is there an apparant relationship between the bitterness of the beer and its alcoholic content?  Draw a scatter plot.  Make your best judgment of a relationship and EXPLAIN your answer.
 
 ### With p-value < 2.2e-16, there is sufficient evidence at alpha= .05 level of significance to suggest that the data is linearly correlated. Correlation estimate =0.67 suggests that the relationship between IBU and ABV is positive and strong.
 
-```{r}
+```{r, fig.width=10, fig.height=5}
 # Plot ABV and IBU
 ggplot(data = clean_df) +
   geom_point(mapping = aes(x = ABV, y = IBU, color=ABV), position ="jitter") +
@@ -213,7 +282,6 @@ str(ipa_ale_df)
 # two sample t-test compare ABV/IBU between IPA and Ale
 t.test(ipa_ale_df$ABV[ipa_ale_df$beer_type=="IPA"],ipa_ale_df$ABV[ipa_ale_df$beer_type=="Ale"],conf.level = .95)
 t.test(ipa_ale_df$IBU[ipa_ale_df$beer_type=="IPA"],ipa_ale_df$IBU[ipa_ale_df$beer_type=="Ale"],conf.level = .95)
-
 
 # Split data into train and test data
 # Train/Test with 70/30
@@ -249,7 +317,7 @@ attr(classify_bud,"prob")
 #IPA vs Ale
 # Loop for many k and the average of many training / test partition
 # to pick the best k for the model 
-```{r}
+
 iterations = 200
 numks = 30
 
@@ -275,16 +343,28 @@ MeanAcc = colMeans(masterAcc)
 
 plot(seq(1,numks,1),MeanAcc, type = "l")
 
+```
+
+```{r, fig.width=9, fig.height=5}
 
 # Plot scatter plot for ABV and IBU of “Ales” and “IPAs”
 ggplot(data = ipa_ale_df) +
   geom_point(mapping = aes(x = ABV, y = IBU, color=beer_type), position ="jitter") +
   ggtitle("IPA and Ales") + xlab("Alcohol by Volume (ABV)") + ylab("International Bitterness Units (IBU)")
 
+```
+
+```{r, fig.width=10, fig.height=5}
 ipa_ale_df %>%
 select(ABV, IBU, beer_type) %>%
 ggpairs(mapping = aes(color = beer_type))
 ```
+
+```{r}
+# Boundary plot
+
+```
+
 
 ## 9.  What states are closest to the Bud ABV/IBU profile?
 
