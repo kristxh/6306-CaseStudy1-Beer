@@ -25,7 +25,8 @@ library(usmap)
 library(naniar)
 library(class)
 library(caret)
-
+library(plotly)
+library(GGally)
 # Import Beer and Brewery data
 beer_df <-  read_csv("Beers.csv")
 brew_df <-  read_csv("Breweries.csv")
@@ -209,6 +210,11 @@ ipa_ale_df$beer_type = ifelse(grepl("IPA", ipa_ale_df$Style), "IPA", "Ale")
 ipa_ale_df %>% filter(is.na(beer_type))
 str(ipa_ale_df)
 
+# two sample t-test compare ABV/IBU between IPA and Ale
+t.test(ipa_ale_df$ABV[ipa_ale_df$beer_type=="IPA"],ipa_ale_df$ABV[ipa_ale_df$beer_type=="Ale"],conf.level = .95)
+t.test(ipa_ale_df$IBU[ipa_ale_df$beer_type=="IPA"],ipa_ale_df$IBU[ipa_ale_df$beer_type=="Ale"],conf.level = .95)
+
+
 # Split data into train and test data
 # Train/Test with 70/30
 splitPerc = .7
@@ -238,6 +244,7 @@ bud_test = data.frame(ABV = .05, IBU = 12)
 
 classify_bud = knn(train[,c("ABV","IBU")], bud_test, train$beer_type, prob = TRUE, k = 5)
 classify_bud
+attr(classify_bud,"prob")
 
 #IPA vs Ale
 # Loop for many k and the average of many training / test partition
@@ -268,11 +275,15 @@ MeanAcc = colMeans(masterAcc)
 
 plot(seq(1,numks,1),MeanAcc, type = "l")
 
-# Plot scatter plot of ABV and IBU for beer classified as “Ale” and “IPA”
+
+# Plot scatter plot for ABV and IBU of “Ales” and “IPAs”
 ggplot(data = ipa_ale_df) +
   geom_point(mapping = aes(x = ABV, y = IBU, color=beer_type), position ="jitter") +
   ggtitle("IPA and Ales") + xlab("Alcohol by Volume (ABV)") + ylab("International Bitterness Units (IBU)")
 
+ipa_ale_df %>%
+select(ABV, IBU, beer_type) %>%
+ggpairs(mapping = aes(color = beer_type))
 ```
 
 ## 9.  What states are closest to the Bud ABV/IBU profile?
