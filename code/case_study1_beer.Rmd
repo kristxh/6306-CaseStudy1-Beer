@@ -21,7 +21,7 @@ library(dplyr)
 library(ggplot2)
 library(data.table)
 library(ggthemes)
-library(usmap)
+# library(usmap)
 library(naniar)
 library(class)
 library(caret)
@@ -29,7 +29,7 @@ library(plotly)
 library(GGally)
 library(ggpubr)
 library(fiftystater)
-library(viridis)
+# library(viridis)
 library(labgeo)
 library(ggmap)
 data(fifty_states)
@@ -40,7 +40,7 @@ ggmap::register_google(key = "AIzaSyCqBihKrMc1DZxxFLD9z8XdQe-Ub3HuaKc")
 # Import Beer and Brewery data
 beer_df <-  read_csv("Beers.csv")
 brew_df <-  read_csv("Breweries.csv")
-cities_df <- read_csv("cities.csv")
+cities_df <- read_csv("cities.csv", col_types = list(col_character(), col_double(), col_double()))
 
 # Check to make sure data imported
 dim(beer_df)
@@ -111,16 +111,12 @@ brew_by_state$id<-state_from_lower(brew_by_state$State)
 
 ```{r, fig.width=10, fig.height=8}
 
-# Fix the longitude in the cities_df dataframe
-cities_df$longitude <- as.double(cities_df$longitude)  
-cities_df <- cities_df %>% filter(!is.na(longitude))
-
 # Plot the US map with number of craft breweries and Budweiser locations
 map_w_brew <- ggplot(data = brew_by_state, aes(map_id = id)) + 
   geom_map(aes(fill = count),  color= "white", map = fifty_states) + 
   expand_limits(x = fifty_states$long, y = fifty_states$lat) +
   coord_map() + 
-  ggtitle("Number of Breweries by State with Anheuser-Busch Brewery Locations") +
+  ggtitle("Number of Breweries by State with Anheser-Busch Brewery Locations") +
   geom_text(data = fifty_states %>%
               group_by(id) %>%
               summarise(lat = mean(c(max(lat), min(lat))),
