@@ -21,7 +21,6 @@ library(dplyr)
 library(ggplot2)
 library(data.table)
 library(ggthemes)
-# library(usmap)
 library(naniar)
 library(class)
 library(caret)
@@ -29,13 +28,8 @@ library(plotly)
 library(GGally)
 library(ggpubr)
 library(fiftystater)
-# library(viridis)
-library(labgeo)
 library(ggmap)
 data(fifty_states)
-
-# Google API Key
-ggmap::register_google(key = "AIzaSyCqBihKrMc1DZxxFLD9z8XdQe-Ub3HuaKc")
 
 # Import Beer and Brewery data
 beer_df <-  read_csv("Beers.csv")
