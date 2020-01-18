@@ -31,11 +31,16 @@ library(ggpubr)
 library(fiftystater)
 library(viridis)
 library(labgeo)
+library(ggmap)
 data(fifty_states)
+
+# Google API Key
+ggmap::register_google(key = "AIzaSyCqBihKrMc1DZxxFLD9z8XdQe-Ub3HuaKc")
 
 # Import Beer and Brewery data
 beer_df <-  read_csv("Beers.csv")
 brew_df <-  read_csv("Breweries.csv")
+cities_df <- read_csv("cities.csv")
 
 # Check to make sure data imported
 dim(beer_df)
@@ -104,14 +109,18 @@ brew_by_state$id<-state_from_lower(brew_by_state$State)
 
 ```
 
-
 ```{r, fig.width=10, fig.height=8}
 
-ggplot(data = brew_by_state, aes(map_id = id)) + 
-  geom_map(aes(fill = count),  color= "black", map = fifty_states) + 
+# Fix the longitude in the cities_df dataframe
+cities_df$longitude <- as.double(cities_df$longitude)  
+cities_df <- cities_df %>% filter(!is.na(longitude))
+
+# Plot the US map with number of craft breweries and Budweiser locations
+map_w_brew <- ggplot(data = brew_by_state, aes(map_id = id)) + 
+  geom_map(aes(fill = count),  color= "white", map = fifty_states) + 
   expand_limits(x = fifty_states$long, y = fifty_states$lat) +
   coord_map() + 
-  ggtitle("Number of Breweries by State") +
+  ggtitle("Number of Breweries by State with Anheuser-Busch Brewery Locations") +
   geom_text(data = fifty_states %>%
               group_by(id) %>%
               summarise(lat = mean(c(max(lat), min(lat))),
@@ -120,7 +129,10 @@ ggplot(data = brew_by_state, aes(map_id = id)) +
               left_join(brew_by_state, by = "id"), aes(x = long, y = lat, label = count))+
   scale_x_continuous(breaks = NULL) + scale_y_continuous(breaks = NULL) +
   labs(x = "", y = "") + theme(legend.position = "bottom", 
-                               panel.background = element_blank())
+                               panel.background = element_blank()) 
+
+map_w_brew  + geom_point(data = cities_df, aes(longitude, latitude), size = 3, color = "red", inherit.aes=FALSE)
+
 
 ```
 
@@ -361,10 +373,52 @@ ggpairs(mapping = aes(color = beer_type))
 ```
 
 ```{r}
-# Boundary plot
+# Boundary plot from Michael Hahsler:  https://michael.hahsler.net/SMU/EMIS7332/R/viz_classifier.html
+decision_plot <- function(model, data, class = NULL, predict_type = "class",
+  resolution = 100, showgrid = TRUE, ...) {
+
+  if(!is.null(class)) cl <- data[,class] else cl <- 1
+  data <- data[,1:2]
+  k <- length(unique(cl))
+
+  plot(data, col = as.integer(cl)+1L, pch = as.integer(cl)+1L, ...)
+
+  # make grid
+  r <- sapply(data, range, na.rm = TRUE)
+  xs <- seq(r[1,1], r[2,1], length.out = resolution)
+  ys <- seq(r[1,2], r[2,2], length.out = resolution)
+  g <- cbind(rep(xs, each=resolution), rep(ys, time = resolution))
+  colnames(g) <- colnames(r)
+  g <- as.data.frame(g)
+
+  ### guess how to get class labels from predict
+  ### (unfortunately not very consistent between models)
+  p <- predict(model, g, type = predict_type)
+  if(is.list(p)) p <- p$class
+  p <- as.factor(p)
+
+  if(showgrid) points(g, col = as.integer(p)+1L, pch = ".")
+
+  z <- matrix(as.integer(p), nrow = resolution, byrow = TRUE)
+  contour(xs, ys, z, add = TRUE, drawlabels = FALSE,
+    lwd = 2, levels = (1:(k-1))+.5)
+
+  invisible(z)
+}
+
+x_test <- ipa_ale_df[,c(4:5,11)]
+x_test$beer_type <- as.factor(x_test$beer_type)
+model <- knn3(beer_type ~ ., data=x_test, k = 5)
 
 ```
 
+
+```{r, fig.width=12, fig.height=10}
+
+# Boundary plot
+decision_plot(model, x_test, class = "beer_type", main = "kNN (5)")
+
+```
 
 ## 9.  What states are closest to the Bud ABV/IBU profile?
 
