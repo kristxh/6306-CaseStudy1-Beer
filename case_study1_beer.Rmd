@@ -1,0 +1,474 @@
+---
+title: "Case Study 1:  Exploratory Data Analysis (EDA) for Budweiser"
+author: "Phu Truong & Kristi Herman"
+date: "01/16/2020"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+### The purpose of this exploratory data analysis is to answer questions from Budweiser related to the craft beer industry in the United States.
+
+```{r}
+# Import dependencies
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(data.table)
+library(ggthemes)
+library(naniar)
+library(class)
+library(caret)
+library(plotly)
+library(GGally)
+library(ggpubr)
+library(tidycensus)
+library(fiftystater) # Latitude and longitude for 50 states
+data(fifty_states) # Import the data
+
+# Import Beer and Brewery data
+beer_df <-  read_csv("Beers.csv")
+brew_df <-  read_csv("Breweries.csv")
+cities_df <- read_csv("cities.csv", col_types = list(col_character(), col_double(), col_double()))
+
+# Check to make sure data imported
+dim(beer_df)
+dim(brew_df)
+View(brew_df)
+
+```
+
+## 1.  How many breweries are present in each state?
+
+```{r}
+#  Group breweries by state
+brew_by_state <- brew_df %>% group_by(State) %>% summarize(count=n())
+
+# Display # of breweries by state
+View(brew_by_state)
+
+```
+
+
+```{r, fig.width=10, fig.height=5}
+
+# Plot # of breweries by state in a barchart
+p <- brew_by_state %>%
+  ggplot(aes(x = State, y = count)) +
+  geom_bar(stat = "identity", fill = "blue", alpha = .5) +
+  ggtitle("Number of Breweries by State") + xlab("State") + ylab("Number of Breweries") +
+  geom_text(aes(y = count, label = count), fontface = "bold", vjust = -.4, color = "black", size = 3) 
+
+p + rotate_x_text(45)
+
+```
+
+
+```{r}
+# In order to plot the count of breweries on the states using the fifty_states data, get the full state names and add them to the brew_by_state df
+
+# Function to take a list of state abbreviations and return the full state names.  'x' is the column of the df that holds 2-letter state codes.
+state_from_lower <- function(x) {
+  # DF wth 52 state codes and state names [includes DC (Washington D.C. and PR (Puerto Rico)]
+  st_codes <- data.frame(
+                      st_abbr=as.factor(c("AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA",
+                                         "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME",
+                                         "MI", "MN", "MO", "MS",  "MT", "NC", "ND", "NE", "NH", "NJ", "NM",
+                                         "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN",
+                                         "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY")),
+                      full=as.factor(c("alaska","alabama","arkansas","arizona","california","colorado",
+                                       "connecticut","district of columbia","delaware","florida","georgia",
+                                       "hawaii","iowa","idaho","illinois","indiana","kansas","kentucky",
+                                       "louisiana","massachusetts","maryland","maine","michigan","minnesota",
+                                       "missouri","mississippi","montana","north carolina","north dakota",
+                                       "nebraska","new hampshire","new jersey","new mexico","nevada",
+                                       "new york","ohio","oklahoma","oregon","pennsylvania","puerto rico",
+                                       "rhode island","south carolina","south dakota","tennessee","texas",
+                                       "utah","virginia","vermont","washington","wisconsin",
+                                       "west virginia","wyoming"))
+                       )
+    
+  # Create a df of state codes from x variable
+  st_abbr_df <- data.frame(state=x)
+    
+  # Match state codes with codes from 'st_codes' df and use it to return the full state name
+  ret_state <- st_codes$full[match(st_abbr_df$state,st_codes$st_abbr)]
+  print(ret_state)
+   
+  # Return the full state names in the same order in which they appeared in the original source
+  return(ret_state)
+}
+
+brew_by_state$id <- state_from_lower(brew_by_state$State)
+
+```
+
+```{r, fig.width=10, fig.height=8}
+
+# Plot the US map with the number of craft breweries as labels and points for Budweiser locations.  The fifty_states data 
+map_w_brew <- ggplot(data = brew_by_state, aes(map_id = id)) + 
+  geom_map(aes(fill = count),  color= "white", map = fifty_states) + 
+  expand_limits(x = fifty_states$long, y = fifty_states$lat) +
+  coord_map() + 
+  ggtitle("Number of Breweries by State with Anheser-Busch Brewery Locations") +
+  geom_text(data = fifty_states %>%
+              group_by(id) %>%
+              summarise(lat = mean(c(max(lat), min(lat))),
+                        long = mean(c(max(long), min(long)))) %>%
+              mutate(state = id) %>%
+              left_join(brew_by_state, by = "id"), aes(x = long, y = lat, label = count))+
+  scale_x_continuous(breaks = NULL) + scale_y_continuous(breaks = NULL) +
+  labs(x = "", y = "") + theme(legend.position = "bottom", 
+                               panel.background = element_blank()) 
+
+map_w_brew  + geom_point(data = cities_df, aes(longitude, latitude), size = 3, color = "red", inherit.aes=FALSE)
+
+
+```
+
+## 2.  Merge the Beer Data with the Brewery Data.  Print first and last six observations.
+
+```{r}
+# Change the column names in the Beer df
+setnames(beer_df, old=c("Name","Brewery_id"), new=c("Beer_name", "Brew_ID"))
+
+# Change column name in the Brewery df
+setnames(brew_df, old=c("Name"), new=c("Brewery_name"))
+
+# Make the state column a factor
+brew_df$State <-  factor(brew_df$State)
+str(brew_df)
+
+# Merge the brewery data with the beer data (left join)
+all_df <- merge(beer_df, brew_df, by="Brew_ID")
+dim(all_df)
+
+# Print the first & last 6 observations
+(first6= head(all_df,6))
+(last6= tail(all_df,6))
+```
+
+## 3.  Address the missing values in each column
+
+```{r}
+# count missing values in each column
+s = sapply(all_df, function(x) sum(is.na(x)))
+s
+
+gg_miss_var(all_df)
+
+# Remove missing data for beer & rename the Name and Brewery_id Columns
+clean_df <- all_df %>% filter(!is.na(ABV) & !is.na(IBU) & !is.na(Style))
+dim(clean_df)
+```
+
+## 4.  Compute the median alcohol content and international bitterness unit for each state.  Plot a bar chart to compare.
+
+```{r}
+# Dataframe with median values for ABV and IBU
+(med_abv_ibu <- clean_df %>% 
+  group_by(State) %>%
+  summarize(med_abv = median(ABV), med_ibu = median(IBU), count = n()))
+
+```
+
+```{r, fig.width=20, fig.height=10}
+
+# Plot the median ABV & IBU
+p2 <- ggplot(med_abv_ibu, aes(x = State)) +
+  geom_col(aes( y = med_ibu, fill="redfill")) +
+  geom_text(aes(y = med_ibu, label = med_ibu), fontface = "bold", vjust = 2.4, color = "white", size = 4) +
+  geom_line(aes(y = med_abv * 1000, group = 1, color = 'blackline')) +
+  geom_text(aes(y = med_abv * 1000, label = round(med_abv, 2)), vjust = -.4, color = "black", size = 4) +
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ . / 1000)) +
+  scale_fill_manual('', labels = 'Median Bitterness (IBU)', values = "#C00000") +
+  scale_color_manual('', labels = 'Median Alcohol By Volumn (ABV)', values = 'black') +
+  ggtitle("Median Alcohol Content & International Bitterness by State") +
+  theme_minimal()
+
+p2 + rotate_x_text(45)
+
+```
+
+## 5.  Which state has the maxiumum alcoholic (ABV) beer?  Which state has the most bitter (IBU) beer?
+###Kentucky has the highest ABV beer, which is called ‘London Balling’,  made by Against the Grain Brewery, located in Louisville city.
+###Oregon has the highest IBU beer, which is called ‘Bitter Bitch Imperial IPA’, made by Astoria Brewing Company, located in Astoria city.
+```{r}
+# Dataframe with maximum values for ABV and IBU
+max_abv_ibu <- clean_df %>% group_by(State) %>% summarize(max_abv = max(ABV), max_ibu = max(IBU), count = n())
+
+#List row with max ABV
+view(clean_df[which.max(clean_df$ABV),])
+
+#List row with max IBU
+view(clean_df[which.max(clean_df$IBU),])
+
+```
+
+```{r, fig.width=20, fig.height=10}
+
+# Plot max values for ABV and IBU
+p3 <- ggplot(max_abv_ibu, aes(x = State)) +
+  geom_col(aes( y = max_ibu, fill="redfill")) +
+  geom_text(aes(y = max_ibu, label = max_ibu), fontface = "bold", vjust = 2.4, color = "white", size = 4) +
+  geom_line(aes(y = max_abv * 1400, group = 1, color = 'blackline')) +
+  geom_text(aes(y = max_abv * 1400, label = round(max_abv, 2)), vjust = -.4, color = "black", size = 4) +
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ . / 1400)) +
+  scale_fill_manual('', labels = 'Max Bitterness (IBU)', values = "#C00000") +
+  scale_color_manual('', labels = 'Max Alcohol By Volumn (ABV)', values = 'black') +
+  ggtitle("Max Alcohol Content & International Bitterness by State") +
+  theme_minimal()
+
+p3 + rotate_x_text(45)
+
+```
+
+## 6.  Comment on the summary statistics and distribution of the ABV variable.
+
+### The distribution of ABV variable is slightly right-skewed.
+
+```{r}
+#Summary of key statistics of ABV
+summary(clean_df$ABV)
+
+#Outliers
+OutVals = boxplot(clean_df$ABV, plot=FALSE)$out
+hist(OutVals)
+
+# Plot boxplot
+clean_df %>%
+  ggplot(aes(y = ABV)) +
+  geom_boxplot() +
+  ggtitle("Summary Statistics of the ABV") + ylab("ABV")
+
+```
+
+```{r, fig.width=10, fig.height=5}
+# Plot histogram of hte ABV distribution
+clean_df %>%
+  ggplot(aes(x = ABV)) +
+  geom_histogram(colour="black",fill="navy") +
+  ggtitle("Distribution of ABV") + xlab("ABV")
+
+# t-test
+t.test(clean_df$ABV, conf.level = .95)
+```
+## 7.  Is there an apparant relationship between the bitterness of the beer and its alcoholic content?  Draw a scatter plot.  Make your best judgment of a relationship and EXPLAIN your answer.
+
+### With p-value < 2.2e-16, there is sufficient evidence at alpha= .05 level of significance to suggest that the data is linearly correlated. Correlation estimate =0.67 suggests that the relationship between IBU and ABV is positive and strong.
+
+```{r, fig.width=10, fig.height=5}
+# Plot ABV and IBU
+ggplot(data = clean_df) +
+  geom_point(mapping = aes(x = ABV, y = IBU, color=ABV), position ="jitter") +
+  ggtitle("Alcohol Content & Bitterness of Beers") + xlab("Alcohol by Volume (ABV)") + ylab("International Bitterness Units (IBU)") +
+  geom_smooth(mapping = aes(x = ABV, y = IBU)) 
+
+#correlation
+cor.test(clean_df$ABV,clean_df$IBU)
+
+```
+
+## 8.  Investigate the difference in IBU and ABV between IPAs and other Ales
+
+```{r}
+
+# Create a dataframe with only IPAs & Ales
+ipa_ale_df <- clean_df %>% filter(str_detect(Style, 'IPA') |str_detect(Style, 'Ale'))
+
+# Add a column for "IPA" or "Ale"
+ipa_ale_df$beer_type = ifelse(grepl("IPA", ipa_ale_df$Style), "IPA", "Ale")
+
+# two sample t-test compare ABV/IBU between IPA and Ale
+t.test(ipa_ale_df$ABV[ipa_ale_df$beer_type=="IPA"],ipa_ale_df$ABV[ipa_ale_df$beer_type=="Ale"],conf.level = .95)
+t.test(ipa_ale_df$IBU[ipa_ale_df$beer_type=="IPA"],ipa_ale_df$IBU[ipa_ale_df$beer_type=="Ale"],conf.level = .95)
+
+# Split data into train and test data
+# Train/Test with 70/30
+splitPerc = .7
+set.seed(4)
+
+trainIndices = sample(1:dim(ipa_ale_df)[1],round(splitPerc * dim(ipa_ale_df)[1]))
+train = ipa_ale_df[trainIndices,]
+test = ipa_ale_df[-trainIndices,]
+
+dim(train)
+head(train)
+dim(test)
+head(test)
+```
+
+```{r}
+# Run the KNN model on the train and test data with k = 5
+classifications = knn(train[,c("ABV","IBU")],test[,c("ABV","IBU")],train$beer_type, prob = TRUE, k = 5)
+
+# Create a confusion matrix of the results with k = 5
+table(classifications,test$beer_type)
+CM_KNN_IPA = confusionMatrix(table(classifications,test$beer_type))
+CM_KNN_IPA
+
+# Predict what Budweiser would be classified as
+bud_test = data.frame(ABV = .05, IBU = 12)
+
+classify_bud = knn(train[,c("ABV","IBU")], bud_test, train$beer_type, prob = TRUE, k = 5)
+classify_bud
+attr(classify_bud,"prob")
+
+#IPA vs Ale
+# Loop for many k and the average of many training / test partition
+# to pick the best k for the model 
+
+iterations = 200
+numks = 30
+
+masterAcc = matrix(nrow = iterations, ncol = numks)
+  
+for(j in 1:iterations)
+{
+accs = data.frame(accuracy = numeric(30), k = numeric(30))
+trainIndices = sample(1:dim(ipa_ale_df)[1],round(splitPerc * dim(ipa_ale_df)[1]))
+train = ipa_ale_df[trainIndices,]
+test = ipa_ale_df[-trainIndices,]
+for(i in 1:numks)
+{
+   classifications = knn(train[,c("ABV","IBU")],test[,c("ABV","IBU")],train$beer_type, prob = TRUE, k = i)
+  table(test$beer_type,classifications)
+  CM = confusionMatrix(table(test$beer_type,classifications))
+  masterAcc[j,i] = CM$overall[1]
+}
+
+}
+
+MeanAcc = colMeans(masterAcc)
+
+plot(seq(1,numks,1),MeanAcc, type = "l")
+
+```
+
+```{r, fig.width=9, fig.height=5}
+
+# Plot scatter plot for ABV and IBU of “Ales” and “IPAs”
+ggplot(data = ipa_ale_df) +
+  geom_point(mapping = aes(x = ABV, y = IBU, color=beer_type), position ="jitter") +
+  ggtitle("IPA and Ales") + xlab("Alcohol by Volume (ABV)") + ylab("International Bitterness Units (IBU)") 
+
+```
+
+```{r, fig.width=10, fig.height=5}
+ipa_ale_df %>%
+select(ABV, IBU, beer_type) %>%
+ggpairs(mapping = aes(color = beer_type)) 
+```
+
+```{r}
+# Boundary plot from Michael Hahsler:  https://michael.hahsler.net/SMU/EMIS7332/R/viz_classifier.html
+decision_plot <- function(model, data, class = NULL, predict_type = "class",
+  resolution = 100, showgrid = TRUE, ...) {
+
+  if(!is.null(class)) cl <- data[,class] else cl <- 1
+  data <- data[,1:2]
+  k <- length(unique(cl))
+
+  plot(data, col = as.integer(cl)+1L, pch = as.integer(cl)+1L, ...)
+
+  # make grid
+  r <- sapply(data, range, na.rm = TRUE)
+  xs <- seq(r[1,1], r[2,1], length.out = resolution)
+  ys <- seq(r[1,2], r[2,2], length.out = resolution)
+  g <- cbind(rep(xs, each=resolution), rep(ys, time = resolution))
+  colnames(g) <- colnames(r)
+  g <- as.data.frame(g)
+
+  ### guess how to get class labels from predict
+  ### (unfortunately not very consistent between models)
+  p <- predict(model, g, type = predict_type)
+  if(is.list(p)) p <- p$class
+  p <- as.factor(p)
+
+  if(showgrid) points(g, col = as.integer(p)+1L, pch = ".")
+
+  z <- matrix(as.integer(p), nrow = resolution, byrow = TRUE)
+  contour(xs, ys, z, add = TRUE, drawlabels = FALSE,
+    lwd = 2, levels = (1:(k-1))+.5)
+
+  invisible(z)
+}
+
+x_test <- ipa_ale_df[,c(4:5,11)]
+x_test$beer_type <- as.factor(x_test$beer_type)
+model <- knn3(beer_type ~ ., data=x_test, k = 5)
+
+```
+
+
+```{r, fig.width=12, fig.height=10}
+
+# Boundary plot
+decision_plot(model, x_test, class = "beer_type", main = "kNN (5)")
+
+```
+
+## 9a.  What states are closest to the Bud ABV/IBU profile?
+
+```{r}
+# Run the KNN model on the train and test data and add the state parameter (Use all data to train/test)
+classify_w_state = knn(train[, 4:5],test[, 4:5],train$State, prob = TRUE, k = 5)
+classify_bud_st = knn(train[, 4:5], bud_test, train$State, prob = TRUE, k = 5)
+
+CM_KNN_State = confusionMatrix(table(classify_w_state,test$State))
+CM_KNN_State
+
+```
+
+## 9b. Add census data
+
+```{r}
+
+# Find out what states have a low # of breweries compared to the state population using census data
+census_api_key("77bae261ca8a4e7a25f4af1c8a61704544ecb02a")
+
+# Estimated median income
+us_inc <- get_acs(geography = "state", variables = "B19013_001")
+us_inc <-  subset(us_inc, select = c(NAME, estimate))
+setnames(us_inc, old=c("NAME","estimate"), new=c("id", "med_income_est"))
+
+# Estimated population
+us_pop <- get_acs(geography = "state", variables = "B01003_001")
+us_pop <- subset(us_pop, select = c(NAME, estimate))
+setnames(us_pop, old=c("NAME","estimate"), new=c("id", "pop_est"))
+
+# Merge population & median income
+(census_df <- merge(us_inc, us_pop, by="id"))
+
+# Change the states to lower case so that you can merge it with the brew_by_state dataframe
+census_df$id <- tolower(census_df$id)
+
+# Merge census data with the brew_by_state df
+brew_by_state_census <- merge(brew_by_state, census_df, by="id")
+
+# Create a column for brewery ratio
+brew_by_state_census$brewery_ratio <- round(brew_by_state_census$pop_est/brew_by_state_census$count)
+
+# Create one dataframe that has brew_by_state, census, and median ABV and IBU
+master_df <- merge(brew_by_state_census, med_abv_ibu, by="State")
+
+# Sort
+master_df <- master_df[order(-master_df$brewery_ratio),]
+master_df_final <- subset(master_df, select = c(State, id, count.x, med_income_est, pop_est, brewery_ratio, med_abv, med_ibu))
+top_3 <- top_n(master_df_final, 3, brewery_ratio)
+
+View(top_3)
+```
+
+## Other:  Median IBU of the dataset
+
+```{r}
+
+#Summary of key statistics of IBU for the conclusions
+summary(clean_df$IBU)
+```
