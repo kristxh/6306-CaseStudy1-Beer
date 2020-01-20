@@ -1,5 +1,7 @@
 # MSDS 6306:  Doing Data Science - Case Study 01
 
+By Phu Truong and Kristi Herman
+
 ## Background
 
 The CEO and CFO of Budweiser (your client) have hired you to answer the questions listed below. Beyond those general questions you may speculate / anticipate what may be of interest to them.  
@@ -32,7 +34,7 @@ In addition, while you have decided to use KNN to investigate this relationship 
 
 * Breweries.csv:  The Breweries dataset contains 558 US breweries.
 
-* cities.csv:  Contains the latitude and longitude of 13 cities with Anheuser-Busch breweries.
+* cities.csv:  Latitude and longitude of 13 cities in the US with Anheuser-Busch breweries.
 
 * Census API:  Estimated population and median income by state from 2015 - 2019.
 
