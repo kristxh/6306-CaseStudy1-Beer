@@ -418,10 +418,34 @@ decision_plot(model, x_test, class = "beer_type", main = "kNN (5)")
 ```{r}
 # Run the KNN model on the train and test data and add the state parameter (Use all data to train/test)
 classify_w_state = knn(train[, 4:5],test[, 4:5],train$State, prob = TRUE, k = 5)
-classify_bud_st = knn(train[, 4:5], bud_test, train$State, prob = TRUE, k = 5)
-
+classify_bud_st = knn(clean_df[, 4:5], bud_test, clean_df$State, prob = TRUE, k = 3)
 CM_KNN_State = confusionMatrix(table(classify_w_state,test$State))
 CM_KNN_State
+
+#Run KNN model for 100 different k to find k with highest probabilities
+bud_test = data.frame(ABV = .05, IBU = 12)
+accs = data.frame(probability = numeric(100), k = numeric(100))
+
+for(i in 1:100)
+{
+  classifications = knn(clean_df[, 4:5], bud_test, clean_df$State, prob = TRUE, k = i)
+
+  accs$probability[i] = attr(classifications,"prob")[1]
+  accs$k[i] = i
+}
+
+plot(accs$k,accs$probability, type = "l", xlab = "k")
+accs %>% arrange(desc(probability))%>% slice(1:10)
+
+#Find the states for k= 9,14
+
+knn(clean_df[, 4:5], bud_test, clean_df$State, prob = TRUE, k = 9)
+knn(clean_df[, 4:5], bud_test, clean_df$State, prob = TRUE, k = 14)
+
+#Plot 
+clean_df%>% filter(State=="ID" | State=="MI") %>% select(ABV,IBU,State)%>% ggplot(aes(x= ABV, y=IBU, color =State))+ geom_point() +ggtitle("Indiana and Miami ABV/IBU")
+
+med_abv_ibu%>% filter(State=="ID" | State=="MI")
 
 ```
 
