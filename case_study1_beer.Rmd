@@ -430,7 +430,7 @@ CM_KNN_State
 ```{r}
 
 # Find out what states have a low # of breweries compared to the state population using census data
-census_api_key("77bae261ca8a4e7a25f4af1c8a61704544ecb02a")
+census_api_key("")
 
 # Estimated median income
 us_inc <- get_acs(geography = "state", variables = "B19013_001")
