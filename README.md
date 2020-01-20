@@ -1,8 +1,8 @@
 # MSDS 6306:  Doing Data Science - Case Study 01
 
-## Background
+![Budweiser Logo](logo.png)
 
-![Budweiser](logo.jpg)
+## Background
 
 The CEO and CFO of Budweiser (your client) have hired you to answer the questions listed below. Beyond those general questions you may speculate / anticipate what may be of interest to them.  
 
