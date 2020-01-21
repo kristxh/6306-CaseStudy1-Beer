@@ -34,6 +34,8 @@ In addition, while you have decided to use KNN to investigate this relationship 
 
 * case_study1_beer.Rmd:  EDA code and plots. 
 
+* case_study1_beer.html:  Web page created from knitr.
+
 * Beers.csv:  Dataset that contains a list of 2410 US craft beers. 
 
 * Breweries.csv:  Dataset that contains 558 US breweries.
