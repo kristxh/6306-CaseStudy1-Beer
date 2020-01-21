@@ -1,7 +1,7 @@
 ---
 title: "Case Study 1:  Exploratory Data Analysis (EDA) for Budweiser"
 author: "Phu Truong & Kristi Herman"
-date: "01/16/2020"
+date: "01/20/2020"
 output:
   html_document: default
 ---
@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-### The purpose of this exploratory data analysis is to answer questions from Budweiser related to the craft beer industry in the United States.
+* The purpose of this exploratory data analysis is to answer questions from Budweiser related to the craft beer industry in the United States.
 
 ```{r}
 # Import dependencies
@@ -44,6 +44,8 @@ View(brew_df)
 ```
 
 ## 1.  How many breweries are present in each state?
+
+* Colorado has the most number of craft breweries.
 
 ```{r}
 #  Group breweries by state
@@ -155,6 +157,8 @@ dim(all_df)
 
 ## 3.  Address the missing values in each column
 
+* The beers with missing ABV, IBU, or Style values were not included in the ABV, IBU, and IPA/Ale analysis.
+
 ```{r}
 # count missing values in each column
 s = sapply(all_df, function(x) sum(is.na(x)))
@@ -168,6 +172,8 @@ dim(clean_df)
 ```
 
 ## 4.  Compute the median alcohol content and international bitterness unit for each state.  Plot a bar chart to compare.
+
+* Maine has the highest median ABV and IBU of all the states. Arkansas and Utah have the lowest median ABV, while Wisconsin has the lowest median IBU.
 
 ```{r}
 # Dataframe with median values for ABV and IBU
@@ -196,8 +202,9 @@ p2 + rotate_x_text(45)
 ```
 
 ## 5.  Which state has the maxiumum alcoholic (ABV) beer?  Which state has the most bitter (IBU) beer?
-###Kentucky has the highest ABV beer, which is called ‘London Balling’,  made by Against the Grain Brewery, located in Louisville city.
-###Oregon has the highest IBU beer, which is called ‘Bitter Bitch Imperial IPA’, made by Astoria Brewing Company, located in Astoria city.
+
+* Kentucky has the highest ABV beer, which is called ‘London Balling’,  made by Against the Grain Brewery, located in Louisville city.
+* Oregon has the highest IBU beer, which is called ‘Bitter Bitch Imperial IPA’, made by Astoria Brewing Company, located in Astoria city.
 ```{r}
 # Dataframe with maximum values for ABV and IBU
 max_abv_ibu <- clean_df %>% group_by(State) %>% summarize(max_abv = max(ABV), max_ibu = max(IBU), count = n())
@@ -230,7 +237,7 @@ p3 + rotate_x_text(45)
 
 ## 6.  Comment on the summary statistics and distribution of the ABV variable.
 
-### The distribution of ABV variable is slightly right-skewed.
+* The distribution of ABV variable is slightly right-skewed.
 
 ```{r}
 #Summary of key statistics of ABV
@@ -260,7 +267,7 @@ t.test(clean_df$ABV, conf.level = .95)
 ```
 ## 7.  Is there an apparant relationship between the bitterness of the beer and its alcoholic content?  Draw a scatter plot.  Make your best judgment of a relationship and EXPLAIN your answer.
 
-### With p-value < 2.2e-16, there is sufficient evidence at alpha= .05 level of significance to suggest that the data is linearly correlated. Correlation estimate =0.67 suggests that the relationship between IBU and ABV is positive and strong.
+* Higher ABV values are associated with higher IBUs and vice versa.  With p-value < 2.2e-16, there is sufficient evidence at alpha = .05 level of significance to suggest that the data is linearly correlated. Correlation estimate = 0.67 suggests that the relationship between IBU and ABV is positive and strong.
 
 ```{r, fig.width=10, fig.height=5}
 # Plot ABV and IBU
@@ -275,6 +282,8 @@ cor.test(clean_df$ABV,clean_df$IBU)
 ```
 
 ## 8.  Investigate the difference in IBU and ABV between IPAs and other Ales
+
+* IPAs have higher average ABV and IBU than other ales.
 
 ```{r}
 
@@ -365,10 +374,12 @@ select(ABV, IBU, beer_type) %>%
 ggpairs(mapping = aes(color = beer_type)) 
 ```
 
+* Here's a visual result of the kNN results looking at 5 nearest neighbors.  The decision boundary line indicates where a beer might get classified as either an IPA or an Ale. 
+
 ```{r}
 # Boundary plot from Michael Hahsler:  https://michael.hahsler.net/SMU/EMIS7332/R/viz_classifier.html
 decision_plot <- function(model, data, class = NULL, predict_type = "class",
-  resolution = 100, showgrid = TRUE, ...) {
+  resolution = 5, showgrid = TRUE, ...) {
 
   if(!is.null(class)) cl <- data[,class] else cl <- 1
   data <- data[,1:2]
@@ -415,6 +426,8 @@ decision_plot(model, x_test, class = "beer_type", main = "kNN (5)")
 
 ## 9a.  What states are closest to the Bud ABV/IBU profile?
 
+Indiana and Michigan have the closest ABV and IBUs of the Budweiser brews.  
+
 ```{r}
 # Run the KNN model on the train and test data and add the state parameter (Use all data to train/test)
 classify_w_state = knn(train[, 4:5],test[, 4:5],train$State, prob = TRUE, k = 5)
@@ -443,18 +456,20 @@ knn(clean_df[, 4:5], bud_test, clean_df$State, prob = TRUE, k = 9)
 knn(clean_df[, 4:5], bud_test, clean_df$State, prob = TRUE, k = 14)
 
 #Plot 
-clean_df%>% filter(State=="ID" | State=="MI") %>% select(ABV,IBU,State)%>% ggplot(aes(x= ABV, y=IBU, color =State))+ geom_point() +ggtitle("Indiana and Miami ABV/IBU")
+clean_df%>% filter(State=="ID" | State=="MI") %>% select(ABV,IBU,State)%>% ggplot(aes(x= ABV, y=IBU, color =State))+ geom_point() +ggtitle("Indiana and Michigan ABV/IBU")
 
 med_abv_ibu%>% filter(State=="ID" | State=="MI")
 
 ```
 
-## 9b. Add census data
+## 9b. What states have a low number of breweries for the population?
+
+New Jersey, Tennessee, and West Virginia have a low number of craft breweries for the population of those states.  
 
 ```{r}
 
 # Find out what states have a low # of breweries compared to the state population using census data
-census_api_key("")
+# census_api_key("")
 
 # Estimated median income
 us_inc <- get_acs(geography = "state", variables = "B19013_001")
@@ -496,3 +511,14 @@ View(top_3)
 #Summary of key statistics of IBU for the conclusions
 summary(clean_df$IBU)
 ```
+
+## Conclusions
+
+* Indiana and Michigan have the closest ABV and IBUs of the Budweiser brews.  If Budweiser wants to consider opening new craft breweries in states where craft beer drinkers have similar taste to Budweiser, then these states should be considered.  Michigan has the third most craft breweries in the US based on our data, indicating that there is a lot of interest in craft breweries. 
+
+* New Jersey, Tennessee, and West Virginia have a low number of craft breweries considering the population of those states.  If Budweiser wants to consider opening breweries that might have more demand, these states should be considered.  
+
+* When comparing Budweiser to IPAs and other ales, Budweiser would be considered an ale.  
+
+* The median ABV in the dataset is .057.  The median IBU is 35.  ABV and IBU have a strong positive linear correlation.  Budweiser ABV and IBU are very low compared to the other beers in the dataset.  Budweiser could consider creating a new craft beer with a higher ABV and IBU.  
+
