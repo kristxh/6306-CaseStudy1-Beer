@@ -2,7 +2,7 @@
 
 By Phu Truong and Kristi Herman
 
-## Background
+## Purpose
 
 The CEO and CFO of Budweiser (your client) have hired you to answer the questions listed below. Beyond those general questions you may speculate / anticipate what may be of interest to them.  
 
