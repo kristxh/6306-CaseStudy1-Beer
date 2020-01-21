@@ -28,13 +28,17 @@ In addition, while you have decided to use KNN to investigate this relationship 
 
 * Knock their socks off!  Find one other useful inference from the data that you feel Budweiser may be able to find value in.  You must convince them why it is important and back up your conviction with appropriate statistical evidence. 
 
-## Datasets
+## Codebook
 
-* Beers.csv:  The Beers dataset contains a list of 2410 US craft beers. 
+* case_study1_beer.pptx:  Presentation of findings.
 
-* Breweries.csv:  The Breweries dataset contains 558 US breweries.
+* case_study1_beer.Rmd:  EDA code and plots. 
 
-* cities.csv:  Latitude and longitude of 13 cities in the US with Anheuser-Busch breweries.
+* Beers.csv:  Dataset that contains a list of 2410 US craft beers. 
+
+* Breweries.csv:  Dataset that contains 558 US breweries.
+
+* cities.csv:  Dataset that contains the Latitude and longitude of 13 cities in the US with Anheuser-Busch breweries.
 
 * Census API:  Estimated population and median income by state from 2015 - 2019.
 
